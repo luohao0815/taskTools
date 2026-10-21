@@ -1,0 +1,43 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build unsigned archive
+        run: |
+          xcodebuild \
+            -project Teleprompter.xcodeproj \
+            -scheme Teleprompter \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Teleprompter.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p build/Payload
+          cp -R "build/Teleprompter.xcarchive/Products/Applications/Teleprompter.app" build/Payload/
+          cd build
+          zip -qr Teleprompter-unsigned.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Teleprompter-unsigned-ipa
+          path: build/Teleprompter-unsigned.ipa
+          if-no-files-found: error
